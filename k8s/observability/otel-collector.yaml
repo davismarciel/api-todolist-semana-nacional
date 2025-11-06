@@ -78,50 +78,50 @@ spec:
         app: otel-collector
     spec:
       containers:
-      - name: otel-collector
-        image: otel/opentelemetry-collector-contrib:0.109.0
-        args:
-          - --config=/etc/otel-collector-config.yaml
-        ports:
-        - containerPort: 4317
-          name: otlp-grpc
-          protocol: TCP
-        - containerPort: 4318
-          name: otlp-http
-          protocol: TCP
-        - containerPort: 8889
-          name: prometheus
-          protocol: TCP
-        - containerPort: 13133
-          name: health
-          protocol: TCP
-        volumeMounts:
-        - name: config
-          mountPath: /etc/otel-collector-config.yaml
-          subPath: otel-collector-config.yaml
-        resources:
-          requests:
-            memory: 256Mi
-            cpu: 100m
-          limits:
-            memory: 512Mi
-            cpu: 500m
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 13133
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 13133
-          initialDelaySeconds: 10
-          periodSeconds: 5
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.109.0
+          args:
+            - --config=/etc/otel-collector-config.yaml
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+              protocol: TCP
+            - containerPort: 4318
+              name: otlp-http
+              protocol: TCP
+            - containerPort: 8889
+              name: prometheus
+              protocol: TCP
+            - containerPort: 13133
+              name: health
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otel-collector-config.yaml
+              subPath: otel-collector-config.yaml
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 100m
+            limits:
+              memory: 512Mi
+              cpu: 500m
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 13133
+            initialDelaySeconds: 10
+            periodSeconds: 5
       volumes:
-      - name: config
-        configMap:
-          name: otel-collector-config
+        - name: config
+          configMap:
+            name: otel-collector-config
 ---
 apiVersion: v1
 kind: Service
@@ -133,17 +133,17 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 4317
-    targetPort: 4317
-    protocol: TCP
-    name: otlp-grpc
-  - port: 4318
-    targetPort: 4318
-    protocol: TCP
-    name: otlp-http
-  - port: 8889
-    targetPort: 8889
-    protocol: TCP
-    name: prometheus
+    - port: 4317
+      targetPort: 4317
+      protocol: TCP
+      name: otlp-grpc
+    - port: 4318
+      targetPort: 4318
+      protocol: TCP
+      name: otlp-http
+    - port: 8889
+      targetPort: 8889
+      protocol: TCP
+      name: prometheus
   selector:
     app: otel-collector
