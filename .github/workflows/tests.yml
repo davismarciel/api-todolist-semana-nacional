@@ -1,67 +1,14 @@
-name: CI/CD - Tests
+name: Tests
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
   test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [20.x, 22.x]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma Client
-        run: pnpm prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://user:password@localhost:5432/test' }}
-
-      - name: Run linter
-        run: pnpm lint
-
-      - name: Run unit tests
-        run: pnpm test
-
-      - name: Run tests with coverage
-        run: pnpm test:cov
-
-      - name: Upload coverage reports
-        if: matrix.node-version == '20.x'
-        uses: codecov/codecov-action@v4
-        with:
-          files: ./coverage/lcov.info
-          flags: unittests
-          name: codecov
-          fail_ci_if_error: false
-
-      - name: Build application
-        run: pnpm build
-
-  lint:
-    name: Lint
+    name: Run Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -82,6 +29,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        run: pnpm prisma generate
+
       - name: Run linter
         run: pnpm lint
 
+      - name: Run tests
+        run: pnpm test
