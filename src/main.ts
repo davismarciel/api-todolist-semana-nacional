@@ -1,3 +1,4 @@
+import { otelSDK } from './common/tracing';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './core/app.module';
 import { ValidationPipe } from '@nestjs/common';
@@ -5,9 +6,12 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { JsonLoggerService } from './common/logger/json-logger.service';
 
 async function bootstrap() {
+  await otelSDK.start();
+  
   const logger = new JsonLoggerService();
   
   logger.log('Starting application...', 'Bootstrap');
+  logger.log('OpenTelemetry SDK initialized', 'Bootstrap');
   
   const app = await NestFactory.create(AppModule, {
     logger: logger,
