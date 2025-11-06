@@ -73,7 +73,7 @@ describe('UserService', () => {
       expect(result).toBeDefined();
       expect(result.email).toBe(createUserDto.email);
       expect(result.name).toBe(createUserDto.name);
-      expect(result.password).toBeUndefined();
+      expect(result).not.toHaveProperty('password');
       expect(bcrypt.hash).toHaveBeenCalledWith(createUserDto.password, 10);
     });
 
@@ -122,7 +122,7 @@ describe('UserService', () => {
 
       expect(result).toBeDefined();
       expect(result.email).toBe(loginDto.email);
-      expect(result.password).toBeUndefined();
+      expect(result).not.toHaveProperty('password');
       expect(bcrypt.compare).toHaveBeenCalledWith(loginDto.password, mockUser.password);
     });
 
@@ -180,7 +180,7 @@ describe('UserService', () => {
 
       expect(result).toBeDefined();
       expect(result.id).toBe(userId);
-      expect(result.password).toBeUndefined();
+      expect(result).not.toHaveProperty('password');
     });
   });
 });
