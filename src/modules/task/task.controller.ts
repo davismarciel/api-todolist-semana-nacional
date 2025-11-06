@@ -36,9 +36,9 @@ export class TaskController {
     this.logger.debug(`Fetching tasks for user ${req.user.id} (${req.user.email}) with filters: ${JSON.stringify(filters)}`);
     
     try {
-      const tasks = await this.taskService.findAll(req.user.id, status, priority);
+    const tasks = await this.taskService.findAll(req.user.id, status, priority);
       this.logger.log(`Found ${tasks.length} task(s) for user ${req.user.id} (${req.user.email})`);
-      return tasks;
+    return tasks;
     } catch (error: any) {
       this.logger.error(`Failed to fetch tasks for user ${req.user.id}: ${error?.message || 'Unknown error'}`, error?.stack);
       throw error;
@@ -50,9 +50,9 @@ export class TaskController {
     this.logger.debug(`Fetching statistics for user ${req.user.id} (${req.user.email})`);
     
     try {
-      const stats = await this.taskService.getStats(req.user.id);
+    const stats = await this.taskService.getStats(req.user.id);
       this.logger.log(`Stats retrieved for user ${req.user.id} (${req.user.email}): ${JSON.stringify(stats)}`);
-      return stats;
+    return stats;
     } catch (error: any) {
       this.logger.error(`Failed to fetch stats for user ${req.user.id}: ${error?.message || 'Unknown error'}`, error?.stack);
       throw error;
