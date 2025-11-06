@@ -3,14 +3,21 @@ import {
   SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-base';
 import { NodeSDK } from '@opentelemetry/sdk-node';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
-  SEMRESATTRS_SERVICE_NAME,
-  SEMRESATTRS_SERVICE_VERSION,
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
 } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-grpc';
+import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-grpc';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
+import {
+  LoggerProvider,
+  SimpleLogRecordProcessor,
+  BatchLogRecordProcessor,
+} from '@opentelemetry/sdk-logs';
+import { logs } from '@opentelemetry/api-logs';
 import { getInstrumentations } from './instrumentations';
 
 const serviceName = process.env.OTEL_SERVICE_NAME || 'api-todolist-sndt';
@@ -21,6 +28,8 @@ const tracesEndpoint =
   process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT || 'http://localhost:4317';
 const metricsEndpoint =
   process.env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT || 'http://localhost:4317';
+const logsEndpoint =
+  process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT || 'http://localhost:4317';
 
 const traceExporter = new OTLPTraceExporter({
   url: tracesEndpoint,
@@ -29,6 +38,11 @@ const traceExporter = new OTLPTraceExporter({
 
 const metricExporter = new OTLPMetricExporter({
   url: metricsEndpoint,
+  timeoutMillis: 10000,
+});
+
+const logExporter = new OTLPLogExporter({
+  url: logsEndpoint,
   timeoutMillis: 10000,
 });
 
@@ -47,28 +61,47 @@ const metricReader = new PeriodicExportingMetricReader({
   exportTimeoutMillis: 30000, // 30 segundos
 });
 
-const resource = new Resource({
-  [SEMRESATTRS_SERVICE_NAME]: serviceName,
-  [SEMRESATTRS_SERVICE_VERSION]: serviceVersion,
+const resource = resourceFromAttributes({
+  [ATTR_SERVICE_NAME]: serviceName,
+  [ATTR_SERVICE_VERSION]: serviceVersion,
   environment: environment,
   'service.namespace': 'todolist',
 });
 
+// Configurar LoggerProvider para logs
+const logRecordProcessor =
+  environment === 'development'
+    ? new SimpleLogRecordProcessor(logExporter)
+    : new BatchLogRecordProcessor(logExporter, {
+        maxQueueSize: 1000,
+        scheduledDelayMillis: 1000,
+        maxExportBatchSize: 512,
+      });
+
+const loggerProvider = new LoggerProvider({
+  resource,
+  processors: [logRecordProcessor],
+});
+
+logs.setGlobalLoggerProvider(loggerProvider);
+
 export const otelSDK = new NodeSDK({
   resource,
-  spanProcessor,
-  metricReader,
+  spanProcessor: spanProcessor,
+  metricReader: metricReader,
   instrumentations: getInstrumentations(),
 });
 
-const shutdown = () => {
-  otelSDK
-    .shutdown()
-    .then(
-      () => console.log('[OTEL] SDK desligado com sucesso'),
-      (err) => console.error('[OTEL] Erro ao desligar SDK:', err),
-    )
-    .finally(() => process.exit(0));
+const shutdown = async () => {
+  try {
+    await loggerProvider.shutdown();
+    await otelSDK.shutdown();
+    console.log('[OTEL] SDK desligado com sucesso');
+  } catch (err) {
+    console.error('[OTEL] Erro ao desligar SDK:', err);
+  } finally {
+    process.exit(0);
+  }
 };
 
 process.on('SIGTERM', shutdown);
