@@ -1,18 +1,18 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: api-todolist-sndt
-  namespace: production
+  name: jaeger-ingress
+  namespace: observability
 spec:
   ingressClassName: nginx
   rules:
-    - host: api-todolist.laranjeira.xyz
+    - host: jaeger.laranjeira.xyz
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: api-todolist-sndt
+                name: jaeger-ui
                 port:
-                  number: 3000
+                  number: 16686

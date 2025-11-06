@@ -1,0 +1,149 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+  namespace: observability
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      batch:
+        timeout: 10s
+        send_batch_size: 1024
+      
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 512
+      
+      resource:
+        attributes:
+          - key: service.name
+            action: upsert
+            from_attribute: service.name
+
+    exporters:
+      # Jaeger para traces
+      otlp/jaeger:
+        endpoint: jaeger-collector:4317
+        tls:
+          insecure: true
+      
+      # Prometheus para metrics
+      prometheus:
+        endpoint: 0.0.0.0:8889
+      
+      # Console para debug
+      logging:
+        loglevel: info
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp/jaeger, logging]
+        
+        metrics:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [prometheus, logging]
+        
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [logging]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-collector
+  namespace: observability
+  labels:
+    app: otel-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+      - name: otel-collector
+        image: otel/opentelemetry-collector-contrib:0.109.0
+        args:
+          - --config=/etc/otel-collector-config.yaml
+        ports:
+        - containerPort: 4317
+          name: otlp-grpc
+          protocol: TCP
+        - containerPort: 4318
+          name: otlp-http
+          protocol: TCP
+        - containerPort: 8889
+          name: prometheus
+          protocol: TCP
+        - containerPort: 13133
+          name: health
+          protocol: TCP
+        volumeMounts:
+        - name: config
+          mountPath: /etc/otel-collector-config.yaml
+          subPath: otel-collector-config.yaml
+        resources:
+          requests:
+            memory: 256Mi
+            cpu: 100m
+          limits:
+            memory: 512Mi
+            cpu: 500m
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 13133
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: otel-collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-collector
+  namespace: observability
+  labels:
+    app: otel-collector
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4317
+    targetPort: 4317
+    protocol: TCP
+    name: otlp-grpc
+  - port: 4318
+    targetPort: 4318
+    protocol: TCP
+    name: otlp-http
+  - port: 8889
+    targetPort: 8889
+    protocol: TCP
+    name: prometheus
+  selector:
+    app: otel-collector

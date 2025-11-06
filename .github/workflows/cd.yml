@@ -26,6 +26,16 @@ jobs:
           method: kubeconfig
           kubeconfig: ${{ secrets.K8S_CONFIG }}
 
+      - name: Deploy Observability Stack
+        uses: Azure/k8s-deploy@v4.9
+        with:
+          namespace: observability
+          manifests: |
+            k8s/observability/namespace.yaml
+            k8s/observability/otel-collector.yaml
+            k8s/observability/jaeger.yaml
+            k8s/observability/jaeger-ingress.yaml
+
       - name: Create/Update Kubernetes Secret
         run: |
           kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
@@ -35,9 +45,11 @@ jobs:
             --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Deploy Kubernetes Manifests
+      - name: Deploy Application
         uses: Azure/k8s-deploy@v4.9
         with:
+          namespace: production
           images: ${{ env.DOCKER_IMAGE }}:${{ github.event.workflow_run.run_number }}
           manifests: |
             k8s/deployment.yaml
+            k8s/ingress.yaml
