@@ -1,36 +1,44 @@
 import { LoggerService } from '@nestjs/common';
+import * as winston from 'winston';
+import { OpenTelemetryTransportV3 } from '@opentelemetry/winston-transport';
 
 export class JsonLoggerService implements LoggerService {
-  private formatLog(level: string, message: string, context?: string, trace?: string) {
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      level: level.toUpperCase(),
-      context: context || 'Application',
-      message,
-      ...(trace && { trace }),
-    };
+  private logger: winston.Logger;
 
-    return JSON.stringify(logEntry);
+  constructor() {
+    this.logger = winston.createLogger({
+      level: 'debug',
+      format: winston.format.json(),
+      transports: [
+        new winston.transports.Console({
+          format: winston.format.combine(
+            winston.format.timestamp(),
+            winston.format.json()
+          ),
+        }),
+        new OpenTelemetryTransportV3(),
+      ],
+    });
   }
 
   log(message: string, context?: string) {
-    console.log(this.formatLog('log', message, context));
+    this.logger.info(message, { context: context || 'Application' });
   }
 
   error(message: string, trace?: string, context?: string) {
-    console.error(this.formatLog('error', message, context, trace));
+    this.logger.error(message, { context: context || 'Application', trace });
   }
 
   warn(message: string, context?: string) {
-    console.warn(this.formatLog('warn', message, context));
+    this.logger.warn(message, { context: context || 'Application' });
   }
 
   debug(message: string, context?: string) {
-    console.debug(this.formatLog('debug', message, context));
+    this.logger.debug(message, { context: context || 'Application' });
   }
 
   verbose(message: string, context?: string) {
-    console.log(this.formatLog('verbose', message, context));
+    this.logger.verbose(message, { context: context || 'Application' });
   }
 }
 

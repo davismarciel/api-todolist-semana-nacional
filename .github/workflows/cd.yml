@@ -1,0 +1,55 @@
+name: CD - Deploy to Kubernetes
+
+on:
+  workflow_run:
+    workflows: ["CI - Build & Push"]
+    types:
+      - completed
+    branches: ["main"]
+
+env:
+  DOCKER_IMAGE: laranjeirajuliano/api-todolist-sndt
+
+jobs:
+  CD:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.1
+
+      - name: Set Kubernetes Context
+        uses: Azure/k8s-set-context@v3.0
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.K8S_CONFIG }}
+
+      - name: Deploy Observability Stack
+        uses: Azure/k8s-deploy@v4.9
+        with:
+          namespace: observability
+          manifests: |
+            k8s/observability/namespace.yaml
+            k8s/observability/otel-collector.yaml
+            k8s/observability/jaeger.yaml
+            k8s/observability/jaeger-ingress.yaml
+
+      - name: Create/Update Kubernetes Secret
+        run: |
+          kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
+          kubectl create secret generic api-todolist-secret \
+            --namespace production \
+            --from-literal=database-url="${{ secrets.DATABASE_URL }}" \
+            --from-literal=jwt-secret="${{ secrets.JWT_SECRET }}" \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy Application
+        uses: Azure/k8s-deploy@v4.9
+        with:
+          namespace: production
+          images: ${{ env.DOCKER_IMAGE }}:${{ github.event.workflow_run.run_number }}
+          manifests: |
+            k8s/deployment.yaml
+            k8s/ingress.yaml
