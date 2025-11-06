@@ -1,16 +1,20 @@
 name: CI - Build & Push
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Tests"]
+    types:
+      - completed
     branches: ["main"]
 
 env:
   DOCKER_IMAGE: laranjeirajuliano/api-todolist-sndt
 
 jobs:
-  CI:
+  build:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout
