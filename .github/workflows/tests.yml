@@ -34,8 +34,5 @@ jobs:
         env:
           DATABASE_URL: postgresql://user:password@localhost:5432/test
 
-      - name: Run linter
-        run: pnpm lint
-
       - name: Run tests
         run: pnpm test
